@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Flowchart Generator</title>
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Inter for a clean look -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* Custom styles */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #111827; /* Dark background */
+            color: #f3f4f6;
+        }
+        /* Style for the generated flowchart SVG */
+        .mermaid svg {
+            margin: 0 auto;
+            display: block;
+            background-color: #1f2937;
+            border-radius: 0.5rem;
+            padding: 1rem;
+        }
+        /* Custom scrollbar for better aesthetics */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1f2937;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #4b5563;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #6b7280;
+        }
+        /* Loading spinner animation */
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+        .spinner {
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-top-color: #3b82f6; /* Blue accent */
+            border-radius: 50%;
+            width: 2.5rem;
+            height: 2.5rem;
+            animation: spin 1s linear infinite;
+        }
+    </style>
+</head>
+<body class="antialiased">
+    <div class="min-h-screen flex flex-col items-center justify-center p-4">
+        <div class="w-full max-w-4xl mx-auto">
+            <!-- Header section -->
+            <header class="text-center mb-8">
+                <h1 class="text-4xl md:text-5xl font-bold text-white tracking-tight">AI Flowchart Generator</h1>
+                <p class="mt-3 text-lg text-gray-400">Turn any idea, process, or question into a clear flowchart.</p>
+            </header>
+
+            <!-- Input section -->
+            <div class="bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-700">
+                <div class="flex flex-col md:flex-row gap-4">
+                    <textarea id="userInput" class="flex-grow bg-gray-900 text-white p-4 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none resize-none" rows="3" placeholder="e.g., How does photosynthesis work?"></textarea>
+                    <button id="generateBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors duration-300 flex items-center justify-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-2"><path d="m3.5 2.5 17 8.5-17 8.5v-7l12-1.5-12-1.5z"/></svg>
+                        Generate
+                    </button>
+                </div>
+            </div>
+
+            <!-- Output section -->
+            <div id="outputContainer" class="mt-8 bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-700 min-h-[300px] flex items-center justify-center transition-all duration-300">
+                <!-- Loading spinner -->
+                <div id="loader" class="hidden">
+                    <div class="spinner"></div>
+                    <p class="mt-4 text-gray-400">AI is thinking...</p>
+                </div>
+                <!-- Flowchart will be rendered here -->
+                <div id="flowchart" class="w-full"></div>
+                 <!-- Placeholder text -->
+                <div id="placeholder" class="text-center text-gray-500">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="mx-auto mb-4"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
+                    <p>Your generated flowchart will appear here.</p>
+                </div>
+                 <!-- Error message display -->
+                <div id="errorMessage" class="hidden text-center text-red-400">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="mx-auto mb-4"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                    <p>Sorry, something went wrong. Please try again.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mermaid.js for rendering the flowchart -->
+    <script type="module">
+        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+        
+        // Initialize Mermaid.js with a dark theme that matches the site
+        mermaid.initialize({
+            startOnLoad: false,
+            theme: 'dark',
+            flowchart: {
+                useMaxWidth: true,
+                htmlLabels: true,
+            },
+            themeVariables: {
+                background: '#1f2937',
+                primaryColor: '#3b82f6',
+                primaryTextColor: '#ffffff',
+                primaryBorderColor: '#3b82f6',
+                lineColor: '#4b5563',
+                textColor: '#d1d5db',
+                nodeBorder: '#3b82f6',
+            }
+        });
+
+        const generateBtn = document.getElementById('generateBtn');
+        const userInput = document.getElementById('userInput');
+        const flowchartDiv = document.getElementById('flowchart');
+        const loader = document.getElementById('loader');
+        const placeholder = document.getElementById('placeholder');
+        const errorMessage = document.getElementById('errorMessage');
+
+        generateBtn.addEventListener('click', async () => {
+            const prompt = userInput.value.trim();
+            if (!prompt) {
+                alert("Please enter a prompt first.");
+                return;
+            }
+
+            // --- UI Updates: Show loader, hide other elements ---
+            loader.classList.remove('hidden');
+            flowchartDiv.innerHTML = '';
+            placeholder.classList.add('hidden');
+            errorMessage.classList.add('hidden');
+            generateBtn.disabled = true;
+            generateBtn.classList.add('opacity-50', 'cursor-not-allowed');
+
+            try {
+                // --- Construct the payload for the Gemini API ---
+                const chatHistory = [{
+                    role: "user",
+                    parts: [{
+                        text: `Generate a flowchart structure for the following topic. The structure must be a JSON array of nodes. Each node must have a unique 'id' (a short, simple uppercase letter like 'A', 'B'), 'text' (the concise content of the node), and 'children' (an array of 'id's that this node connects to). The first node in the array is the starting point. Ensure all child IDs correspond to an actual node ID in the array. Topic: "${prompt}"`
+                    }]
+                }];
+                
+                const payload = {
+                    contents: chatHistory,
+                    generationConfig: {
+                        responseMimeType: "application/json",
+                        responseSchema: {
+                            type: "ARRAY",
+                            items: {
+                                type: "OBJECT",
+                                properties: {
+                                    "id": { "type": "STRING", "description": "A unique uppercase letter ID for the node (e.g., 'A', 'B')." },
+                                    "text": { "type": "STRING", "description": "The concise text content for the flowchart node." },
+                                    "children": {
+                                        "type": "ARRAY",
+                                        "items": { "type": "STRING" },
+                                        "description": "An array of child node IDs this node connects to."
+                                    }
+                                },
+                                required: ["id", "text", "children"]
+                            }
+                        }
+                    }
+                };
+
+                const apiKey = ""; // API key is handled by the environment
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+
+                // --- Make the API call ---
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) {
+                    throw new Error(`API call failed with status: ${response.status}`);
+                }
+
+                const result = await response.json();
+
+                // --- Process the response ---
+                if (result.candidates && result.candidates[0].content && result.candidates[0].content.parts[0]) {
+                    const jsonText = result.candidates[0].content.parts[0].text;
+                    const flowchartData = JSON.parse(jsonText);
+                    
+                    // Convert JSON to Mermaid syntax
+                    const mermaidSyntax = convertToMermaid(flowchartData);
+                    
+                    // Render the flowchart
+                    await renderFlowchart(mermaidSyntax);
+                } else {
+                    console.error("Unexpected API response structure:", result);
+                    throw new Error("Could not parse the AI's response.");
+                }
+
+            } catch (error) {
+                console.error("Error:", error);
+                errorMessage.classList.remove('hidden');
+            } finally {
+                // --- UI Cleanup: Hide loader, re-enable button ---
+                loader.classList.add('hidden');
+                generateBtn.disabled = false;
+                generateBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+            }
+        });
+
+        /**
+         * Converts the structured JSON data from the AI into Mermaid.js flowchart syntax.
+         * @param {Array<Object>} data - The flowchart data from the API.
+         * @returns {string} The Mermaid.js syntax string.
+         */
+        function convertToMermaid(data) {
+            if (!data || data.length === 0) return 'graph TD;\n  A["No data to display"];';
+
+            let mermaidString = 'graph TD;\n'; // TD = Top Down direction
+            
+            // Sanitize text for Mermaid syntax (quotes, etc.)
+            const sanitize = (text) => `"${text.replace(/"/g, '#quot;')}"`;
+
+            // Define nodes
+            data.forEach(node => {
+                mermaidString += `    ${node.id}[${sanitize(node.text)}];\n`;
+            });
+
+            // Define connections
+            data.forEach(node => {
+                if (node.children && node.children.length > 0) {
+                    node.children.forEach(childId => {
+                        // Ensure the childId exists in the data to prevent broken links
+                        if (data.some(n => n.id === childId)) {
+                           mermaidString += `    ${node.id} --> ${childId};\n`;
+                        }
+                    });
+                }
+            });
+
+            return mermaidString;
+        }
+
+        /**
+         * Renders the flowchart using Mermaid.js.
+         * @param {string} syntax - The Mermaid syntax to render.
+         */
+        async function renderFlowchart(syntax) {
+            try {
+                const { svg } = await mermaid.render('mermaid-graph', syntax);
+                flowchartDiv.innerHTML = svg;
+            } catch (e) {
+                console.error("Mermaid rendering error:", e);
+                errorMessage.classList.remove('hidden');
+                flowchartDiv.innerHTML = `<pre class="text-red-400">${e.message}</pre>`;
+            }
+        }
+    </script>
+</body>
+</html>
